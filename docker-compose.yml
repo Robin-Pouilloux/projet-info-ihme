@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-geartrack}
+      POSTGRES_USER: ${POSTGRES_USER:-geartrack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-geartrack_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-geartrack}:${POSTGRES_PASSWORD:-geartrack_dev}@db:5432/${POSTGRES_DB:-geartrack}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      WEAR_TRAIL_FACTOR: ${WEAR_TRAIL_FACTOR:-1.25}
+      WEAR_ELEVATION_FACTOR_PER_100M: ${WEAR_ELEVATION_FACTOR_PER_100M:-0.03}
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-5173}:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
