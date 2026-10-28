@@ -30,6 +30,7 @@ coverage/
 .coverage
 htmlcov/
 backend/tests/
+backend/test/
 *.sqlite
 *.sqlite3
 .DS_Store

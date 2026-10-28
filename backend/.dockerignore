@@ -3,5 +3,13 @@ __pycache__/
 .pytest_cache/
 .coverage
 .env
+.env.*
+acces-*.txt
+deploy.curl
+*.curl
+.private/
 .venv/
 venv/
+node_modules/
+test/
+tests/

@@ -7,16 +7,15 @@ ARG BASE_PATH=/
 ENV BASE_PATH=${BASE_PATH}
 RUN cd frontend && npm run build
 
-FROM python:3.12-slim
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PORT=3000 \
-    COROS_ENABLED=false
+FROM node:24-bookworm-slim
+ARG BASE_PATH=/
+ENV NODE_ENV=production PORT=3000 BASE_PATH=${BASE_PATH}
 WORKDIR /app
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY --chown=1000:1000 backend/ .
-COPY --from=frontend-build --chown=1000:1000 /workspace/frontend/dist ./app/static
-USER 1000:1000
+COPY backend/package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+COPY --chown=node:node backend/app.js backend/server.js backend/migrate.js ./
+COPY --chown=node:node backend/migrations ./migrations
+COPY --from=frontend-build --chown=node:node /workspace/frontend/dist ./app/static
+USER node
 EXPOSE 3000
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3000} --no-access-log"]
+CMD ["node", "server.js"]

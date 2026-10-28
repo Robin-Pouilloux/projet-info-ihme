@@ -1,11 +1,13 @@
-FROM python:3.12-slim
+FROM node:24-bookworm-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+ENV NODE_ENV=production PORT=3000
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+COPY --chown=node:node app.js server.js migrate.js ./
+COPY --chown=node:node migrations ./migrations
 
-EXPOSE 8000
+USER node
+EXPOSE 3000
+CMD ["node", "server.js"]
