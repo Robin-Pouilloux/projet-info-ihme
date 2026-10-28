@@ -58,7 +58,7 @@ def sanitize_response_excerpt(body, token):
     return text[:1000]
 
 
-def request_deployment(url, token):
+def request_deployment(url, token, digest):
     address = urllib.parse.urlsplit(url)
     if (
         address.scheme != "https"
@@ -70,10 +70,11 @@ def request_deployment(url, token):
         or not re.fullmatch(r"/__deploy/(suivi|p[0-9]{2})", address.path)
     ):
         raise ValueError("URL HTTPS de déploiement invalide.")
-    if not token:
-        raise ValueError("Jeton privé requis.")
+    if not token or not re.fullmatch(r"sha256:[a-f0-9]{64}", digest):
+        raise ValueError("Jeton privé et digest SHA-256 requis.")
     request = urllib.request.Request(
         url,
+        data=json.dumps({"digest": digest}).encode(),
         headers={
             "Content-Type": "application/json",
             "Authorization": "Bearer " + token,
@@ -99,6 +100,7 @@ if __name__ == "__main__":
         result = request_deployment(
             os.environ.get("DEPLOY_URL", ""),
             os.environ.get("DEPLOY_TOKEN", ""),
+            os.environ.get("DIGEST", ""),
         )
         print(f"Demande de déploiement acceptée par le serveur (HTTP {result}).")
     except urllib.error.HTTPError as error:

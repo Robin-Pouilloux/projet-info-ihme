@@ -89,4 +89,5 @@ jobs:
         env:
           DEPLOY_URL: ${{ vars.IHME_DEPLOY_URL }}
           DEPLOY_TOKEN: ${{ secrets.IHME_DEPLOY_TOKEN }}
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: python3 deploy/request.py
