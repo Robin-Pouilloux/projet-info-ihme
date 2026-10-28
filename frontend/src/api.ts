@@ -132,7 +132,8 @@ function validationMessage(item: { loc?: (string | number)[]; msg?: string; type
 }
 
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`/api${path}`, {
+  const apiBase = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
+  const response = await fetch(`${apiBase}${path}`, {
     ...options,
     headers: { "Content-Type": "application/json", ...options.headers },
   });

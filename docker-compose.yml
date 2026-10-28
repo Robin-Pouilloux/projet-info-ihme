@@ -23,9 +23,11 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       WEAR_TRAIL_FACTOR: ${WEAR_TRAIL_FACTOR:-1.25}
       WEAR_ELEVATION_FACTOR_PER_100M: ${WEAR_ELEVATION_FACTOR_PER_100M:-0.03}
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      COROS_MCP_URL: ${COROS_MCP_URL:-https://mcp.coros.com/mcp}
+      COROS_REDIRECT_URI: ${COROS_REDIRECT_URI:-http://localhost:8001/api/coros/oauth/callback}
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log"
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${API_PORT:-8001}:8000"
     depends_on:
       db:
         condition: service_healthy

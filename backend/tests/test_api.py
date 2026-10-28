@@ -3,6 +3,7 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -52,6 +53,30 @@ def test_openapi_documents_the_rest_api(client):
     assert response.status_code == 200
     assert "/api/dashboard" in response.json()["paths"]
     assert "/api/shoes/{shoe_id}/stats" in response.json()["paths"]
+    assert "/api/coros/auth/status" in response.json()["paths"]
+
+
+def test_health_checks_database_connection(client):
+    response = client.get("/api/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_health_reports_database_unavailable_without_leaking_connection_details(client):
+    class UnavailableDatabase:
+        def execute(self, statement):
+            raise OperationalError(statement, {}, Exception("sensitive connection detail"))
+
+    def override_get_db():
+        yield UnavailableDatabase()
+
+    app.dependency_overrides[get_db] = override_get_db
+    response = client.get("/api/health")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": {"status": "unavailable"}}
+    assert "sensitive connection detail" not in response.text
 
 
 def test_bike_maintenance_due_and_component_ownership(client):

@@ -1,0 +1,35 @@
+name: Vérifications GearTrack
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Installer et construire le frontend
+        run: |
+          npm ci --prefix frontend
+          npm run build --prefix frontend
+      - name: Installer et tester le backend
+        working-directory: backend
+        run: |
+          python -m pip install -r requirements.txt
+          pytest -q
+      - name: Construire l’image de déploiement
+        run: docker build --build-arg BASE_PATH=/projet-info-ihme/ -t geartrack:ci .

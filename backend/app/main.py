@@ -1,11 +1,16 @@
+import logging
 from decimal import Decimal
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func, select
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.coros_oauth import router as coros_router
 from app.database import get_db
 from app.models import Bike, BikeRide, Component, MaintenanceRecord, Shoe, ShoeAssessment, ShoeRun
 from app.schemas import (
@@ -31,6 +36,9 @@ from app.schemas import (
 )
 
 app = FastAPI(title="GearTrack API", version="1.0.0", description="Suivi de maintenance vélo et d'usure des chaussures.")
+logger = logging.getLogger(__name__)
+if settings.coros_enabled:
+    app.include_router(coros_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
@@ -54,7 +62,15 @@ def apply_update(entity, payload, required_fields: set[str]):
 
 
 @app.get("/api/health")
-def health():
+def health(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+    except SQLAlchemyError as error:
+        logger.warning("Database health check failed")
+        raise HTTPException(
+            status_code=503,
+            detail={"status": "unavailable"},
+        ) from error
     return {"status": "ok"}
 
 
@@ -302,3 +318,8 @@ def shoe_stats(shoe_id: int, db: Session = Depends(get_db)):
             "elevation_factor_per_100m_per_km": settings.wear_elevation_factor_per_100m,
         },
     )
+
+
+_static_dir = Path(__file__).with_name("static")
+if _static_dir.is_dir():
+    app.mount("/", StaticFiles(directory=_static_dir, html=True), name="frontend")
